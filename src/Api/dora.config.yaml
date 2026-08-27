@@ -1,0 +1,16 @@
+# Configures which repos this instance tracks, how they group into teams, and how deployments
+# and incidents are detected. Edit this file (or point Dora:ConfigPath at a different one) to
+# point the dashboard at your own org — no code changes required.
+
+teams:
+  - name: platform
+    repositories:
+      - your-org/your-repo
+
+deploymentDetection:
+  strategy: github-release # github-release | main-merge | workflow-run (only github-release is implemented so far)
+
+incidentDetection:
+  labels:
+    - incident
+    - hotfix

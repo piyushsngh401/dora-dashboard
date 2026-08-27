@@ -1,0 +1,23 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+
+# Node / web
+web/node_modules/
+web/dist/
+web/.vite/
+*.tsbuildinfo
+
+# Env / secrets
+.env
+.env.*
+appsettings.*.local.json
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
