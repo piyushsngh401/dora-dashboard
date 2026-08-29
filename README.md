@@ -5,7 +5,7 @@ frequency, lead time for changes, change failure rate, and mean time to recovery
 activity, for one or more teams. Everything it tracks (repos, team groupings, how deployments and
 incidents are detected) is driven by a single config file, not hardcoded to one org's setup.
 
-!\[DORA Metrics Dashboard screenshot](docs/screenshot.png)
+![DORA Metrics Dashboard screenshot](docs/screenshot.png)
 
 ## Why
 
