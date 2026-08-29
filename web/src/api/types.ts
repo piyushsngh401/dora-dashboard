@@ -11,6 +11,20 @@ export interface TeamMetricsResponse {
   metrics: Record<MetricName, number>;
 }
 
+export interface MetricSeriesPoint {
+  bucketStart: string;
+  bucketEnd: string;
+  metrics: Record<MetricName, number>;
+}
+
+export interface TeamMetricsSeriesResponse {
+  team: string;
+  windowStart: string;
+  windowEnd: string;
+  bucketDays: number;
+  series: MetricSeriesPoint[];
+}
+
 export interface ApiError {
   status: number;
   message: string;

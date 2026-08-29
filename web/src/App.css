@@ -81,3 +81,35 @@
   color: #888;
   margin-left: 0.35rem;
 }
+
+.dashboard__trends {
+  margin-top: 2.5rem;
+}
+
+.dashboard__trends h2 {
+  font-size: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.dashboard__trends-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.trend-chart {
+  padding: 1rem 1.25rem 0.5rem;
+  border: 1px solid #e2e2e2;
+  border-radius: 10px;
+}
+
+.trend-chart__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+.trend-chart__unit {
+  font-weight: 400;
+  color: #888;
+}

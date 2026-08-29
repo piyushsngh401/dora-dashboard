@@ -33,10 +33,14 @@ var doraConfig = File.Exists(configPath)
 builder.Services.AddSingleton(doraConfig);
 
 // --- Database ---
+// MigrationsAssembly("Api") is required because DoraDbContext lives in Core, but Core
+// deliberately has no Npgsql package reference (it stays provider-agnostic) — so the generated
+// migration code, which is Npgsql-specific, has to live in Api instead of Core's own assembly.
 builder.Services.AddDbContext<DoraDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("Default"),
         npgsql => npgsql.MigrationsAssembly("Api")));
+
 // --- GitHub client + ingestion ---
 builder.Services.AddSingleton(_ =>
 {
@@ -49,6 +53,8 @@ builder.Services.AddSingleton(_ =>
 
     return client;
 });
+// Fully qualified: both Octokit and our own Ingestion.GitHub namespace declare an IGitHubClient,
+// and both are in scope here, so the unqualified name is ambiguous.
 builder.Services.AddSingleton<DoraDashboard.Ingestion.GitHub.IGitHubClient, OctokitGitHubClient>();
 builder.Services.AddScoped<ISyncService, SyncService>();
 builder.Services.AddHostedService<SyncSchedulerHostedService>();
@@ -133,6 +139,46 @@ app.MapGet("/api/teams/{teamName}/metrics", async (
     return Results.Ok(new { team = team.Name, windowStart, windowEnd, metrics });
 })
 .WithName("GetTeamMetrics")
+.WithOpenApi();
+
+app.MapGet("/api/teams/{teamName}/metrics/series", async (
+    string teamName,
+    DateTimeOffset? from,
+    DateTimeOffset? to,
+    int? bucketDays,
+    DoraDbContext db,
+    DoraConfig config,
+    IEnumerable<IMetricCalculator> calculators) =>
+{
+    var team = config.Teams.FirstOrDefault(t => t.Name.Equals(teamName, StringComparison.OrdinalIgnoreCase));
+    if (team is null)
+    {
+        return Results.NotFound();
+    }
+
+    var windowStart = from ?? DateTimeOffset.UtcNow.AddDays(-90);
+    var windowEnd = to ?? DateTimeOffset.UtcNow;
+    var bucketSize = TimeSpan.FromDays(bucketDays is > 0 ? bucketDays.Value : 7);
+
+    var repositoryIds = await db.Repositories
+        .Where(r => team.Repositories.Contains(r.Owner + "/" + r.Name))
+        .Select(r => r.Id)
+        .ToListAsync();
+
+    var context = new MetricCalculationContext(
+        await db.PullRequests.Where(p => repositoryIds.Contains(p.RepositoryId) && p.MergedAt >= windowStart && p.MergedAt <= windowEnd).ToListAsync(),
+        await db.Deployments.Where(d => repositoryIds.Contains(d.RepositoryId) && d.DeployedAt >= windowStart && d.DeployedAt <= windowEnd).ToListAsync(),
+        await db.Incidents.Where(i => repositoryIds.Contains(i.RepositoryId) && i.OpenedAt >= windowStart && i.OpenedAt <= windowEnd).ToListAsync(),
+        windowStart,
+        windowEnd);
+
+    // Re-runs the same IMetricCalculator strategies used by the point-in-time endpoint above,
+    // once per bucket, so the trend is guaranteed to agree with the headline numbers.
+    var series = MetricSeriesCalculator.GenerateSeries(context, calculators, bucketSize);
+
+    return Results.Ok(new { team = team.Name, windowStart, windowEnd, bucketDays = bucketSize.TotalDays, series });
+})
+.WithName("GetTeamMetricsSeries")
 .WithOpenApi();
 
 app.MapGet("/api/repos/{repositoryId:int}/metrics", async (

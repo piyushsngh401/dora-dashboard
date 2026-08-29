@@ -4,6 +4,13 @@ using Microsoft.Extensions.Logging;
 
 namespace DoraDashboard.Ingestion;
 
+/// <summary>
+/// Runs SyncAllAsync on a fixed interval. POST /api/sync triggers the same logic on demand.
+/// A sync failure (Postgres unreachable, GitHub rate-limited, bad config, etc.) is logged and
+/// retried on the next interval rather than rethrown: by default, an unhandled exception in a
+/// BackgroundService is fatal to the *entire host*, not just this service, so without this
+/// try/catch a transient failure here would take the whole API process down.
+/// </summary>
 public sealed class SyncSchedulerHostedService : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromHours(1);
