@@ -36,6 +36,8 @@ services:
         sync: false
       - key: DOTNET_gcServer
         value: "0"
+      - key: DOTNET_hostBuilder__reloadConfigOnChange
+        value: "false"
 
   - type: web
     name: dora-dashboard-web
