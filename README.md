@@ -5,6 +5,8 @@ frequency, lead time for changes, change failure rate, and mean time to recovery
 activity, for one or more teams. Everything it tracks (repos, team groupings, how deployments and
 incidents are detected) is driven by a single config file, not hardcoded to one org's setup.
 
+&#x20;  !\[DORA Metrics Dashboard screenshot](docs/screenshot.png)
+
 ## Why
 
 Engineering leadership tools that surface these metrics (Sleuth, LinearB, Jellyfish) exist because
@@ -17,24 +19,24 @@ a one-off script.
 ```mermaid
 flowchart LR
     subgraph Ingestion
-        GH[GitHub API - Octokit.NET] --> Sync[Sync Service / Scheduler]
+        GH\[GitHub API - Octokit.NET] --> Sync\[Sync Service / Scheduler]
     end
-    Sync --> DB[(PostgreSQL)]
-    Config[dora.config.yaml] --> Sync
+    Sync --> DB\[(PostgreSQL)]
+    Config\[dora.config.yaml] --> Sync
     Config --> API
-    DB --> API[ASP.NET Core API]
-    API --> Web[React + TypeScript SPA]
-    API --> Health[/health, /health/ready/]
+    DB --> API\[ASP.NET Core API]
+    API --> Web\[React + TypeScript SPA]
+    API --> Health\[/health, /health/ready/]
 ```
 
-- **`src/Core`** — domain entities, EF Core `DbContext`, and the metric calculators (pure,
-  independently testable strategy classes behind `IMetricCalculator`).
-- **`src/Ingestion`** — the GitHub client (Octokit, wrapped behind `IGitHubClient` so it's
-  mockable) and the sync service, which both the API's `POST /api/sync` and a background
-  scheduler call.
-- **`src/Api`** — ASP.NET Core Minimal API: metrics endpoints, health checks, OpenTelemetry,
-  Serilog, CORS for the SPA.
-- **`web`** — React + TypeScript (Vite) dashboard that calls the API over REST.
+* **`src/Core`** — domain entities, EF Core `DbContext`, and the metric calculators (pure,
+independently testable strategy classes behind `IMetricCalculator`).
+* **`src/Ingestion`** — the GitHub client (Octokit, wrapped behind `IGitHubClient` so it's
+mockable) and the sync service, which both the API's `POST /api/sync` and a background
+scheduler call.
+* **`src/Api`** — ASP.NET Core Minimal API: metrics endpoints, health checks, OpenTelemetry,
+Serilog, CORS for the SPA.
+* **`web`** — React + TypeScript (Vite) dashboard that calls the API over REST.
 
 See [`docs/adr/0001-metric-definitions-and-stack-choice.md`](docs/adr/0001-metric-definitions-and-stack-choice.md)
 for exactly how each metric is defined and why, including the simplifying assumptions worth
@@ -64,21 +66,21 @@ npm run dev
 ```
 
 Optionally set `GitHub:Token` (an `appsettings.Development.json` override, or the
-`GitHub__Token` environment variable) to a personal access token to avoid GitHub's unauthenticated
+`GitHub\_\_Token` environment variable) to a personal access token to avoid GitHub's unauthenticated
 rate limit.
 
 ## Tech stack
 
-| Layer | Choice |
-|---|---|
-| Backend | .NET 8, ASP.NET Core Minimal API |
-| Database | PostgreSQL + EF Core |
-| GitHub access | Octokit.NET, wrapped behind `IGitHubClient` |
-| Resilience | Polly (retry with backoff on GitHub calls) |
-| Frontend | React + TypeScript, Vite |
-| Observability | Serilog (structured logs), OpenTelemetry (traces + metrics) |
-| Testing | xUnit; Testcontainers for a real Postgres in integration tests |
-| CI | GitHub Actions — separate jobs for the .NET and web builds |
+|Layer|Choice|
+|-|-|
+|Backend|.NET 8, ASP.NET Core Minimal API|
+|Database|PostgreSQL + EF Core|
+|GitHub access|Octokit.NET, wrapped behind `IGitHubClient`|
+|Resilience|Polly (retry with backoff on GitHub calls)|
+|Frontend|React + TypeScript, Vite|
+|Observability|Serilog (structured logs), OpenTelemetry (traces + metrics)|
+|Testing|xUnit; Testcontainers for a real Postgres in integration tests|
+|CI|GitHub Actions — separate jobs for the .NET and web builds|
 
 ## Status
 
@@ -103,3 +105,4 @@ full phased roadmap.
 docker-compose.yml
 .github/workflows/ci.yml
 ```
+
