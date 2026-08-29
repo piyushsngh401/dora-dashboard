@@ -1,0 +1,50 @@
+# Render "Blueprint" spec: connect this repo at render.com/select-repo and Render provisions
+# everything below in one go (a free Postgres instance, the API as a Docker web service, and the
+# React dashboard as a static site) instead of clicking through three separate setup screens.
+#
+# Two values you'll still set by hand in the Render dashboard after the first deploy:
+#   1. GitHub__Token on dora-dashboard-api (secret — never goes in this file or git)
+#   2. VITE_API_BASE_URL on dora-dashboard-web, once you know the API's actual assigned URL
+#      (Render usually honors the service name below, but appends a suffix if it's taken)
+
+databases:
+  - name: dora-dashboard-db
+    plan: free
+    databaseName: dora
+    user: dora
+
+services:
+  - type: web
+    name: dora-dashboard-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./src/Api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health/ready
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: dora-dashboard-db
+          property: connectionString
+      - key: Dora__AutoMigrate
+        value: "true"
+      - key: Cors__WebOrigin
+        value: https://dora-dashboard-web.onrender.com
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: GitHub__Token
+        sync: false
+
+  - type: web
+    name: dora-dashboard-web
+    runtime: static
+    plan: free
+    buildCommand: cd web && npm install && npm run build
+    staticPublishPath: web/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://dora-dashboard-api.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

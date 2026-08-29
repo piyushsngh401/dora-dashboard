@@ -5,6 +5,7 @@ using DoraDashboard.Ingestion;
 using DoraDashboard.Ingestion.GitHub;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Octokit;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -38,7 +39,7 @@ builder.Services.AddSingleton(doraConfig);
 // migration code, which is Npgsql-specific, has to live in Api instead of Core's own assembly.
 builder.Services.AddDbContext<DoraDbContext>(options =>
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("Default"),
+        ResolveConnectionString(builder.Configuration),
         npgsql => npgsql.MigrationsAssembly("Api")));
 
 // --- GitHub client + ingestion ---
@@ -90,6 +91,16 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+// --- Schema bootstrap for hosted environments ---
+// Local dev applies migrations explicitly via `dotnet ef database update`, but a hosted demo
+// (Render, Fly.io, etc.) has no shell to run that from, so it opts in via Dora__AutoMigrate=true
+// to apply pending migrations on startup instead. Off by default so local dev's workflow doesn't change.
+if (app.Configuration.GetValue<bool>("Dora:AutoMigrate"))
+{
+    using var migrationScope = app.Services.CreateScope();
+    migrationScope.ServiceProvider.GetRequiredService<DoraDbContext>().Database.Migrate();
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -220,6 +231,39 @@ app.MapPost("/api/sync", async (ISyncService syncService, CancellationToken canc
 .WithOpenApi();
 
 app.Run();
+
+// Most hosting platforms (Render, Fly.io, Heroku-style PaaS) hand you a single postgres://
+// connection URL via a DATABASE_URL env var rather than the ADO.NET keyword=value string Npgsql
+// expects — so translate it when present. Local dev has no DATABASE_URL, so it keeps using
+// ConnectionStrings:Default from appsettings/appsettings.Development.json exactly as before.
+static string ResolveConnectionString(IConfiguration configuration)
+{
+    var databaseUrl = configuration["DATABASE_URL"];
+    if (string.IsNullOrWhiteSpace(databaseUrl))
+    {
+        return configuration.GetConnectionString("Default")
+            ?? throw new InvalidOperationException(
+                "No database connection string configured. Set ConnectionStrings:Default (local dev) or DATABASE_URL (hosted).");
+    }
+
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':', 2);
+
+    // Named distinctly from the top-level `builder` (WebApplicationBuilder) — a local function in
+    // a top-level statements file shares that enclosing scope, so reusing the name would conflict.
+    var connectionStringBuilder = new NpgsqlConnectionStringBuilder
+    {
+        Host = uri.Host,
+        Port = uri.Port > 0 ? uri.Port : 5432,
+        Database = uri.AbsolutePath.TrimStart('/'),
+        Username = Uri.UnescapeDataString(userInfo[0]),
+        Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty,
+        SslMode = SslMode.Require,
+        TrustServerCertificate = true,
+    };
+
+    return connectionStringBuilder.ConnectionString;
+}
 
 // Exposed so WebApplicationFactory<Program> in the test project can bootstrap this app in-process.
 public partial class Program

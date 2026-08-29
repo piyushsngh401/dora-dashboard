@@ -39,6 +39,7 @@ function App() {
       setError(err instanceof Error ? err.message : "Sync failed");
     }
   };
+
   return (
     <main className="dashboard">
       <header className="dashboard__header">

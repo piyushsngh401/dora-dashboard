@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/.vite/
+**/TestResults/
+.git/
+.vs/
+web/
+tests/
+docs/
+*.md

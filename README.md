@@ -4,7 +4,10 @@ A self-hosted dashboard that computes the four [DORA metrics](https://dora.dev/)
 frequency, lead time for changes, change failure rate, and mean time to recovery — from GitHub
 activity, for one or more teams. Everything it tracks (repos, team groupings, how deployments and
 incidents are detected) is driven by a single config file, not hardcoded to one org's setup.
-   ![DORA Metrics Dashboard screenshot](docs/screenshot.png)
+
+**[Live demo](https://dora-dashboard-web.onrender.com)** — hosted on Render's free tier, so the
+first load after a period of inactivity can take 30-60 seconds while the server wakes up.
+
 ## Why
 
 Engineering leadership tools that surface these metrics (Sleuth, LinearB, Jellyfish) exist because
@@ -49,12 +52,14 @@ docker compose up -d
 # 2. Configure which repos/teams to track
 #    Edit src/Api/dora.config.yaml (defaults to a placeholder repo)
 
-# 3. Create the database schema
+# 3. Apply the database schema (migrations are already committed under src/Api/Migrations —
+#    this just replays them against your local Postgres; only needed once per fresh database)
 dotnet tool install --global dotnet-ef   # once, if you don't have it
-# Migrations live in src/Api (not src/Core) because the generated code is
-# provider-specific (Npgsql) and only Api references that package.
-dotnet ef migrations add InitialCreate --project src/Api --startup-project src/Api
 dotnet ef database update --project src/Api --startup-project src/Api
+
+# Changing an entity later? Generate a new migration the same way (migrations live in src/Api,
+# not src/Core, because the generated code is provider-specific and only Api references Npgsql):
+#   dotnet ef migrations add <Name> --project src/Api --startup-project src/Api
 
 # 4. Run the API
 dotnet run --project src/Api
@@ -69,6 +74,25 @@ npm run dev
 Optionally set `GitHub:Token` (an `appsettings.Development.json` override, or the
 `GitHub__Token` environment variable) to a personal access token to avoid GitHub's unauthenticated
 rate limit.
+
+## Deployment
+
+[`render.yaml`](render.yaml) is a Render Blueprint: connect this repo at
+[render.com/select-repo](https://dashboard.render.com/select-repo) and it provisions a free
+Postgres instance, the API as a Docker web service ([`src/Api/Dockerfile`](src/Api/Dockerfile)),
+and the dashboard as a static site, in one pass. Two things still need setting by hand in the
+Render dashboard after the first deploy (deliberately not in the blueprint, since they're
+secrets/environment-specific):
+
+1. `GitHub__Token` on the API service — a personal access token, same as the local `GitHub:Token`
+   setting, to avoid GitHub's unauthenticated rate limit.
+2. `VITE_API_BASE_URL` on the static site — Render usually honors the service name in
+   `render.yaml`, but appends a suffix if that name is already taken; only needs adjusting if so.
+
+The API applies pending EF Core migrations automatically on startup when `Dora__AutoMigrate=true`
+(set by the blueprint) — there's no shell access to a Render service to run `dotnet ef database
+update` by hand. Local development is unaffected: that flag defaults to off, so the `dotnet ef
+database update` step in Quickstart still applies migrations explicitly as before.
 
 ## Tech stack
 
@@ -85,11 +109,11 @@ rate limit.
 
 ## Status
 
-Phase 0 scaffold: solution structure, entities, metric calculators (with unit tests), the GitHub
-ingestion path, API endpoints, and a working dashboard UI — including per-metric trend charts
-backed by a bucketed `/metrics/series` endpoint — are in place. Not yet done: an EF Core migration
-committed to the repo (run `dotnet ef migrations add InitialCreate` once you can reach NuGet and a
-Postgres instance). See the build plan for the full phased roadmap.
+Solution structure, entities, an EF Core migration committed to the repo, metric calculators (with
+unit tests), the GitHub ingestion path, API endpoints, and a working dashboard UI — including
+per-metric trend charts backed by a bucketed `/metrics/series` endpoint — are all in place, with a
+Render deployment ready to go (see Deployment below). See the build plan for the full phased
+roadmap of what's next.
 
 ## Repo structure
 
@@ -104,5 +128,6 @@ Postgres instance). See the build plan for the full phased roadmap.
   /Api.Tests    — API integration tests (Testcontainers + Postgres)
 /docs/adr       — architecture decision records
 docker-compose.yml
+render.yaml     — Render Blueprint (Postgres + API + static site)
 .github/workflows/ci.yml
 ```
