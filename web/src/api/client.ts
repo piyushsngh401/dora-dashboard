@@ -1,7 +1,7 @@
 import type { TeamMetricsResponse } from "./types";
 
 // Set VITE_API_BASE_URL in web/.env.local to point at a non-default API host.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "https://localhost:7152";
 
 export async function fetchTeamMetrics(teamName: string): Promise<TeamMetricsResponse> {
   const response = await fetch(`${API_BASE_URL}/api/teams/${encodeURIComponent(teamName)}/metrics`);

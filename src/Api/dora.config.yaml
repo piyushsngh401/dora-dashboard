@@ -5,7 +5,7 @@
 teams:
   - name: platform
     repositories:
-      - your-org/your-repo
+      - cli/cli
 
 deploymentDetection:
   strategy: github-release # github-release | main-merge | workflow-run (only github-release is implemented so far)

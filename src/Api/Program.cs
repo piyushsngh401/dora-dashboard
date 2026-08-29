@@ -6,6 +6,9 @@ using DoraDashboard.Ingestion.GitHub;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Octokit;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -31,8 +34,9 @@ builder.Services.AddSingleton(doraConfig);
 
 // --- Database ---
 builder.Services.AddDbContext<DoraDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
-
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("Default"),
+        npgsql => npgsql.MigrationsAssembly("Api")));
 // --- GitHub client + ingestion ---
 builder.Services.AddSingleton(_ =>
 {
@@ -45,7 +49,7 @@ builder.Services.AddSingleton(_ =>
 
     return client;
 });
-builder.Services.AddSingleton<IGitHubClient, OctokitGitHubClient>();
+builder.Services.AddSingleton<DoraDashboard.Ingestion.GitHub.IGitHubClient, OctokitGitHubClient>();
 builder.Services.AddScoped<ISyncService, SyncService>();
 builder.Services.AddHostedService<SyncSchedulerHostedService>();
 
