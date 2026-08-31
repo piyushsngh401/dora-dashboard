@@ -34,6 +34,22 @@ public sealed class OctokitGitHubClient : IGitHubClient
             .ToList();
     }
 
+    public async Task<IReadOnlyList<DeploymentData>> GetMainBranchMergesAsync(
+        string owner, string repo, DateTimeOffset since, CancellationToken cancellationToken = default)
+    {
+        var repository = await _client.Repository.Get(owner, repo);
+
+        var request = new CommitRequest { Sha = repository.DefaultBranch, Since = since.UtcDateTime };
+        var commits = await _client.Repository.Commit.GetAll(owner, repo, request);
+
+        // Parents.Count > 1 is the standard signal for "this commit merged a branch" (a PR merge,
+        // in GitHub's default merge-commit workflow) as opposed to a direct/fast-forward commit.
+        return commits
+            .Where(c => c.Parents.Count > 1)
+            .Select(c => new DeploymentData(c.Sha[..7], c.Commit.Committer.Date))
+            .ToList();
+    }
+
     public async Task<IReadOnlyList<IncidentData>> GetLabeledIssuesAsync(
         string owner, string repo, IReadOnlyList<string> labels, DateTimeOffset since, CancellationToken cancellationToken = default)
     {

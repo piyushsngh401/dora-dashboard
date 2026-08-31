@@ -16,10 +16,11 @@ stack to build on.
 
 ## Decision: metric definitions (v1)
 
-- **Deployment frequency** — count of GitHub Releases published in the window, divided by the
-  number of days in the window. Configurable via `deploymentDetection.strategy`; alternate
-  strategies (merges to `main`, tagged workflow runs) are defined in the config schema but not
-  yet implemented.
+- **Deployment frequency** — count of deployments in the window, divided by the number of days in
+  the window. What counts as a "deployment" is configurable via `deploymentDetection.strategy`:
+  either GitHub Releases (`github-release`) or merge commits to the default branch (`main-merge`).
+  A third strategy (tagged workflow runs) is defined in the config schema but not yet implemented —
+  selecting it fails fast at sync time instead of silently falling back to a different strategy.
 - **Lead time for changes** — for each merged PR, the time until the *next* deployment at or
   after the merge. This is an approximation: it assumes the next deployment after a PR merges is
   the one that shipped it, which holds for repos that deploy frequently but can overstate lead

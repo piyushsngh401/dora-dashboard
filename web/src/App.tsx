@@ -11,6 +11,11 @@ function App() {
   const [series, setSeries] = useState<TeamMetricsSeriesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Separate from isLoading: syncing hits GitHub for every configured repo and can take anywhere
+  // from a couple seconds to well over a minute (more on a cold-started free-tier instance) —
+  // without its own indicator the button just sits there with no feedback, which is exactly what
+  // made a real 90-second sync look "stalled" before this existed.
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const loadMetrics = async () => {
     setIsLoading(true);
@@ -32,13 +37,18 @@ function App() {
 
   const handleSync = async () => {
     setError(null);
+    setIsSyncing(true);
     try {
       await triggerSync();
       await loadMetrics();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sync failed");
+    } finally {
+      setIsSyncing(false);
     }
   };
+
+  const isBusy = isLoading || isSyncing;
 
   return (
     <main className="dashboard">
@@ -54,13 +64,22 @@ function App() {
           onChange={(e) => setTeamName(e.target.value)}
           placeholder="Team name (see dora.config.yaml)"
         />
-        <button type="button" onClick={loadMetrics} disabled={isLoading}>
+        <button type="button" onClick={loadMetrics} disabled={isBusy}>
+          {isLoading && <span className="spinner" aria-hidden="true" />}
           {isLoading ? "Loading…" : "Load metrics"}
         </button>
-        <button type="button" onClick={handleSync}>
-          Sync now
+        <button type="button" onClick={handleSync} disabled={isBusy}>
+          {isSyncing && <span className="spinner" aria-hidden="true" />}
+          {isSyncing ? "Syncing…" : "Sync now"}
         </button>
       </div>
+
+      {isSyncing && (
+        <p className="dashboard__hint" role="status">
+          Fetching from GitHub — this can take up to a minute or so, longer if the free-tier API
+          instance just woke up from being idle.
+        </p>
+      )}
 
       {error && <p className="dashboard__error">{error}</p>}
 

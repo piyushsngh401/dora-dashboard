@@ -32,16 +32,27 @@ services:
         value: https://dora-dashboard-web.onrender.com
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
-      - key: GitHub__Token
-        sync: false
+      # Belt-and-suspenders alongside Api.csproj's <ServerGarbageCollection>false</...> — the free
+      # instance's memory ceiling is tight enough that Server GC's per-core heap sizing crashes
+      # the process (exit 139/SIGSEGV) before it finishes starting.
       - key: DOTNET_gcServer
         value: "0"
+      # ASP.NET Core watches appsettings*.json for changes by default, via a native
+      # FileSystemWatcher/inotify call — Render's sandboxed free-tier containers don't support
+      # that the way a normal Linux host does, and it crashes the process (SIGSEGV/139) during
+      # startup, right as it's building configuration. There's never a reason to hot-reload config
+      # in a container anyway (a config change means a redeploy), so just turn the watch off.
       - key: DOTNET_hostBuilder__reloadConfigOnChange
         value: "false"
+      - key: GitHub__Token
+        sync: false
 
   - type: web
     name: dora-dashboard-web
     runtime: static
+    # No `plan` field here: Render static sites aren't tiered like web/database services are —
+    # they're just free hosting, and Render's Blueprint validator rejects a "free" plan here as
+    # unrecognized ("no such plan free for service type web") for that reason.
     buildCommand: cd web && npm install && npm run build
     staticPublishPath: web/dist
     envVars:

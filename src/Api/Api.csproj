@@ -4,6 +4,10 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Server GC pre-sizes heap segments per detected CPU core, which reliably overshoots the
+         ~512MB a free-tier host container actually gets — the process gets killed (SIGSEGV/139)
+         before it ever finishes starting. Workstation GC uses a single, much smaller heap and
+         has no meaningful downside for an app handling this little concurrent traffic. -->
     <ServerGarbageCollection>false</ServerGarbageCollection>
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
   </PropertyGroup>

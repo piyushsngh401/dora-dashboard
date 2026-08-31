@@ -14,7 +14,6 @@ public class DoraDbContext : DbContext
     public DbSet<PullRequest> PullRequests => Set<PullRequest>();
     public DbSet<Deployment> Deployments => Set<Deployment>();
     public DbSet<Incident> Incidents => Set<Incident>();
-    public DbSet<MetricSnapshot> MetricSnapshots => Set<MetricSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

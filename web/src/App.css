@@ -42,6 +42,34 @@
   cursor: default;
 }
 
+.dashboard__controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.spinner {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dashboard__hint {
+  color: #666;
+  font-size: 0.85rem;
+  margin: -0.75rem 0 1rem;
+}
+
 .dashboard__error {
   color: #b00020;
   background: #fdecea;

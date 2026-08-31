@@ -27,6 +27,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Api\Api.csproj" />
     <ProjectReference Include="..\..\src\Core\Core.csproj" />
+    <!-- Explicit even though Api.csproj already references it transitively — needed directly for
+         IGitHubClient/FakeGitHubClient in the sync+metrics integration tests below. -->
+    <ProjectReference Include="..\..\src\Ingestion\Ingestion.csproj" />
   </ItemGroup>
 
 </Project>

@@ -73,7 +73,7 @@ public sealed class SyncService : ISyncService
             async ct => await _gitHub.GetMergedPullRequestsAsync(owner, name, since, ct), cancellationToken);
 
         var deployments = await _resilience.ExecuteAsync(
-            async ct => await _gitHub.GetReleasesAsync(owner, name, since, ct), cancellationToken);
+            async ct => await FetchDeploymentsAsync(owner, name, since, ct), cancellationToken);
 
         var incidents = await _resilience.ExecuteAsync(
             async ct => await _gitHub.GetLabeledIssuesAsync(owner, name, _config.IncidentDetection.Labels, since, ct), cancellationToken);
@@ -111,7 +111,7 @@ public sealed class SyncService : ISyncService
                 RepositoryId = repository.Id,
                 Reference = deployment.Reference,
                 DeployedAt = deployment.DeployedAt,
-                Source = "release"
+                Source = _config.DeploymentDetection.Strategy
             });
         }
 
@@ -136,4 +136,19 @@ public sealed class SyncService : ISyncService
 
         await _db.SaveChangesAsync(cancellationToken);
     }
+
+    // Previously dora.config.yaml advertised three strategies here (github-release, main-merge,
+    // workflow-run) but the code silently ignored the setting and always used releases — a
+    // configuration option that did nothing regardless of what you set it to. This now actually
+    // branches on it, and fails loudly for a strategy that isn't implemented yet rather than
+    // quietly falling back to the wrong behavior.
+    private Task<IReadOnlyList<DeploymentData>> FetchDeploymentsAsync(
+        string owner, string name, DateTimeOffset since, CancellationToken cancellationToken) =>
+        _config.DeploymentDetection.Strategy switch
+        {
+            "github-release" => _gitHub.GetReleasesAsync(owner, name, since, cancellationToken),
+            "main-merge" => _gitHub.GetMainBranchMergesAsync(owner, name, since, cancellationToken),
+            var strategy => throw new NotSupportedException(
+                $"deploymentDetection.strategy '{strategy}' is not implemented yet. Supported values: github-release, main-merge.")
+        };
 }
